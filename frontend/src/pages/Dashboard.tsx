@@ -77,6 +77,27 @@ export default function Dashboard() {
   const [activeTotalPages, setActiveTotalPages] = useState(1);
   const [loadingActive, setLoadingActive] = useState(true);
 
+  // Dashboard Metrics State
+  const [dashboardStats, setDashboardStats] = useState({
+    total_revenue: 0,
+    today_sales: 0,
+    total_orders: 0,
+  });
+
+  const loadDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/dashboard_stats');
+      const data = await res.json();
+      setDashboardStats(data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboardStats();
+  }, [loadDashboardStats]);
+
   useEffect(() => {
     const loadPredictions = async () => {
       try {
@@ -150,17 +171,18 @@ export default function Dashboard() {
     return () => clearTimeout(timeout);
   }, [loadActiveOrders]);
 
-  const totalRevenue = sales
-    .filter((s) => s.status === "Completed")
-    .reduce((sum, s) => sum + s.total, 0);
-  const totalOrders = sales.length;
+  // Reload stats whenever active orders change to keep them in sync
+  useEffect(() => {
+    loadDashboardStats();
+  }, [activeRemote, pendingRemote, loadDashboardStats]);
+
+  const totalRevenue = dashboardStats.total_revenue || 0;
+  const totalOrders = dashboardStats.total_orders || 0;
   const pendingOrders = pendingRemote.length;
-  const todaySales = sales
-    .filter((s) => s.created_at === "2026-03-08")
-    .reduce((sum, s) => sum + s.total, 0);
+  const todaySales = dashboardStats.today_sales || 0;
 
   const lowStockItems = items.filter((i) => i.stock < 20);
-  const recentSales = sales.slice(0, 5);
+  const recentSales = salesRemote.slice(0, 5);
   const pendingCustomerOrders = pendingRemote.slice(0, 5);
 
   const stats = [

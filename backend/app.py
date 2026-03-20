@@ -361,6 +361,46 @@ def get_active_orders():
         })
     except Exception as e: return jsonify({"error": str(e)}), 500
 
+@app.route('/api/dashboard_stats', methods=['GET'])
+def get_dashboard_stats():
+    try:
+        today_date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+        docs = db.collection('sales').stream()
+        
+        total_revenue = 0
+        today_sales = 0
+        total_orders = 0
+        
+        for doc in docs:
+            data = doc.to_dict()
+            
+            # Skip Estimations for actual revenue/order counts
+            if data.get('doc_type') == 'Estimation':
+                continue
+                
+            status = data.get('status')
+            if status != 'Rejected':
+                total_orders += 1
+                rev = float(data.get('total', 0))
+                
+                # Only strictly Completed orders count toward global lifetime revenue
+                if status == 'Completed':
+                    total_revenue += rev
+                
+                created_at = data.get('created_at')
+                # Check if it was created today
+                if created_at and hasattr(created_at, 'strftime'):
+                    if created_at.strftime('%Y-%m-%d') == today_date_str:
+                        today_sales += rev
+                        
+        return jsonify({
+            "total_revenue": total_revenue,
+            "today_sales": today_sales,
+            "total_orders": total_orders
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/sales', methods=['GET'])
 def get_sales():
     try:

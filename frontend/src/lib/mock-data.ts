@@ -31,7 +31,7 @@ export interface Sale {
   sgst: number;
   total: number;
   doc_type: "Tax Invoice" | "Estimation";
-  status: "Pending" | "Approved" | "Ready" | "Completed";
+  status: "Pending" | "Approved" | "Ready" | "Completed" | "Rejected";
   created_at: string;
 }
 
@@ -41,7 +41,7 @@ export interface CustomerOrder {
   customer_email: string;
   items: SaleItem[];
   total: number;
-  status: "Pending" | "Approved" | "Ready" | "Completed";
+  status: "Pending" | "Approved" | "Ready" | "Completed" | "Rejected";
   doc_type: string;
   created_at: string;
 }
