@@ -49,7 +49,7 @@ export default function CustomerPortal() {
     const item = items.find((i) => i.id === selectedItem);
     if (!item) return;
 
-    fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/recommend', {
+    fetch((import.meta.env.VITE_API_URL || '') + '/api/recommend', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ item_name: item.name })
