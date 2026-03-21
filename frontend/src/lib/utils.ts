@@ -30,7 +30,7 @@ export function sortProductsByDiameter<T extends { name: string }>(items: T[]): 
 
 export const sendWhatsApp = async (saleId: string, partyName: string, date: string, total: number) => {
   try {
-    const res = await fetch(`/api/party_phone/${encodeURIComponent(partyName)}`);
+    const res = await fetch(`\${import.meta.env.VITE_API_BASE_URL || ''}/api/party_phone/${encodeURIComponent(partyName)}`);
     const data = await res.json();
     let phone = data.success && data.phone ? data.phone : null;
 

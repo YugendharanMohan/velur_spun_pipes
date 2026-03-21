@@ -86,7 +86,7 @@ export default function Dashboard() {
 
   const loadDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/api/dashboard_stats');
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/dashboard_stats');
       const data = await res.json();
       setDashboardStats(data);
     } catch (e) {
@@ -101,7 +101,7 @@ export default function Dashboard() {
   useEffect(() => {
     const loadPredictions = async () => {
       try {
-        const res = await fetch('/api/ai_forecast');
+        const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/ai_forecast');
         const data = await res.json();
         setPredictions(data.predictions || []);
       } catch (e) {
@@ -119,7 +119,7 @@ export default function Dashboard() {
   const loadPendingOrders = useCallback(async () => {
     setLoadingPending(true);
     try {
-      const res = await fetch(`/api/pending_orders`);
+      const res = await fetch(`\${import.meta.env.VITE_API_BASE_URL || ''}/api/pending_orders`);
       const data = await res.json();
       setPendingRemote(data || []);
     } catch (e) {
@@ -136,7 +136,7 @@ export default function Dashboard() {
   const loadSales = useCallback(async () => {
     setLoadingSales(true);
     try {
-      const res = await fetch(`/api/sales?page=${salesPage}&limit=10&search=${encodeURIComponent(salesSearch)}`);
+      const res = await fetch(`\${import.meta.env.VITE_API_BASE_URL || ''}/api/sales?page=${salesPage}&limit=10&search=${encodeURIComponent(salesSearch)}`);
       const data = await res.json();
       setSalesRemote(data.sales || []);
       setSalesTotalPages(data.total_pages || 1);
@@ -155,7 +155,7 @@ export default function Dashboard() {
   const loadActiveOrders = useCallback(async () => {
     setLoadingActive(true);
     try {
-      const res = await fetch(`/api/active_orders?page=${activePage}&limit=10&search=${encodeURIComponent(activeSearch)}`);
+      const res = await fetch(`\${import.meta.env.VITE_API_BASE_URL || ''}/api/active_orders?page=${activePage}&limit=10&search=${encodeURIComponent(activeSearch)}`);
       const data = await res.json();
       setActiveRemote(data.active_orders || []);
       setActiveTotalPages(data.total_pages || 1);

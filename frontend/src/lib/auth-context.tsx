@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, isLoading: true }));
 
     try {
-      const res = await fetch('/api/customer_register', {
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/customer_register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
