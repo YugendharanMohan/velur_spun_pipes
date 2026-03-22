@@ -119,7 +119,7 @@ export default function Dashboard() {
   const loadPendingOrders = useCallback(async () => {
     setLoadingPending(true);
     try {
-      const res = await fetch(`\${import.meta.env.VITE_API_URL || ''}/api/pending_orders`);
+      const res = await fetch((import.meta.env.VITE_API_URL || '') + '/api/pending_orders');
       const data = await res.json();
       setPendingRemote(data || []);
     } catch (e) {
@@ -136,7 +136,7 @@ export default function Dashboard() {
   const loadSales = useCallback(async () => {
     setLoadingSales(true);
     try {
-      const res = await fetch(`\${import.meta.env.VITE_API_URL || ''}/api/sales?page=${salesPage}&limit=10&search=${encodeURIComponent(salesSearch)}`);
+      const res = await fetch((import.meta.env.VITE_API_URL || '') + `/api/sales?page=${salesPage}&limit=10&search=${encodeURIComponent(salesSearch)}`);
       const data = await res.json();
       setSalesRemote(data.sales || []);
       setSalesTotalPages(data.total_pages || 1);
@@ -155,7 +155,7 @@ export default function Dashboard() {
   const loadActiveOrders = useCallback(async () => {
     setLoadingActive(true);
     try {
-      const res = await fetch(`\${import.meta.env.VITE_API_URL || ''}/api/active_orders?page=${activePage}&limit=10&search=${encodeURIComponent(activeSearch)}`);
+      const res = await fetch((import.meta.env.VITE_API_URL || '') + `/api/active_orders?page=${activePage}&limit=10&search=${encodeURIComponent(activeSearch)}`);
       const data = await res.json();
       setActiveRemote(data.active_orders || []);
       setActiveTotalPages(data.total_pages || 1);

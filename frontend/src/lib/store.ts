@@ -57,7 +57,7 @@ export const useERPStore = create<ERPStore>((set, get) => ({
   },
 
   updateItem: async (id, data) => {
-    const res = await fetch(`\${import.meta.env.VITE_API_URL || ''}/api/update_item/${id}`, {
+    const res = await fetch((import.meta.env.VITE_API_URL || '') + `/api/update_item/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -68,7 +68,7 @@ export const useERPStore = create<ERPStore>((set, get) => ({
   },
 
   deleteItem: async (id) => {
-    const res = await fetch(`\${import.meta.env.VITE_API_URL || ''}/api/delete_item/${id}`, { method: 'DELETE' });
+    const res = await fetch((import.meta.env.VITE_API_URL || '') + `/api/delete_item/${id}`, { method: 'DELETE' });
     const data = await res.json();
     if (!res.ok || (data.success === false)) throw new Error(data.error || "Failed to delete item");
     await get().fetchInventory();
@@ -96,7 +96,7 @@ export const useERPStore = create<ERPStore>((set, get) => ({
   },
 
   deleteCustomer: async (id) => {
-    const res = await fetch(`\${import.meta.env.VITE_API_URL || ''}/api/parties/${id}`, { method: 'DELETE' });
+    const res = await fetch((import.meta.env.VITE_API_URL || '') + `/api/parties/${id}`, { method: 'DELETE' });
     const data = await res.json();
     if (!res.ok || (data.success === false)) throw new Error(data.error || "Failed to delete customer");
     await get().fetchCustomers();
@@ -121,7 +121,7 @@ export const useERPStore = create<ERPStore>((set, get) => ({
 
   fetchCustomerOrders: async (email: string, page = 1, limit = 10) => {
     try {
-      const res = await fetch(`\${import.meta.env.VITE_API_URL || ''}/api/customer_orders/${encodeURIComponent(email)}?page=${page}&limit=${limit}`);
+      const res = await fetch((import.meta.env.VITE_API_URL || '') + `/api/customer_orders/${encodeURIComponent(email)}?page=${page}&limit=${limit}`);
       const data = await res.json();
       set({
         customerOrders: data.orders || [],
