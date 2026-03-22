@@ -44,7 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const endpoint = role === 'admin' ? '/api/login' : '/api/customer_login';
-      const res = await fetch(endpoint, {
+      const apiUrl = (import.meta.env.VITE_API_URL || '') + endpoint;
+      const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, role })
