@@ -387,11 +387,11 @@ def get_dashboard_stats():
                 if status == 'Completed':
                     total_revenue += rev
                 
-                    created_at = data.get('created_at')
-                    # Check if it was created today
-                    if created_at and hasattr(created_at, 'strftime'):
-                        if created_at.strftime('%Y-%m-%d') == today_date_str:
-                            today_sales += rev
+                created_at = data.get('created_at')
+                # Check if it was created today
+                if created_at and hasattr(created_at, 'strftime'):
+                    if created_at.strftime('%Y-%m-%d') == today_date_str:
+                        today_sales += rev
                         
         return jsonify({
             "total_revenue": total_revenue,
