@@ -1,34 +1,42 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
+import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ============================================
 # FIREBASE CONFIGURATION
 # ============================================
 
-# 1. Get the absolute path to the service account key
-# This fixes issues where Python cannot find the file if you run app.py from a different directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SERVICE_ACCOUNT_KEY_PATH = os.path.join(BASE_DIR, "serviceAccountKey.json")
 
-# 2. Initialize Firebase Admin SDK
-# We check 'if not firebase_admin._apps' to prevent errors during Flask hot-reloads
 if not firebase_admin._apps:
+    firebase_cred_env = os.environ.get("FIREBASE_CREDENTIALS_JSON")
     
-    if os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
+    if firebase_cred_env:
+        try:
+            cred_dict = json.loads(firebase_cred_env)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            print(" Firebase initialized successfully using ENVIRONMENT VARIABLE.")
+        except Exception as e:
+            print(f" Error parsing FIREBASE_CREDENTIALS_JSON: {e}")
+            raise e
+    elif os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
         try:
             cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
             firebase_admin.initialize_app(cred)
-            print(" Firebase initialized successfully.")
+            print(" Firebase initialized successfully from FILE.")
         except Exception as e:
             print(f" Error initializing Firebase: {e}")
             raise e
     else:
-        # Stop the server immediately if the key is missing to prevent confusing 500 errors later
         raise FileNotFoundError(
-            f" CRITICAL ERROR: 'serviceAccountKey.json' was not found at: {SERVICE_ACCOUNT_KEY_PATH}\n"
-            " Please download it from Firebase Console -> Project Settings -> Service Accounts -> Generate New Private Key\n"
-            " Place the file inside the 'backend' folder."
+            " CRITICAL ERROR: Firebase credentials not found.\n"
+            " Ensure FIREBASE_CREDENTIALS_JSON is set or 'serviceAccountKey.json' exists in the backend folder."
         )
 
 # 3. Export the Database Client
