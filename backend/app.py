@@ -826,8 +826,9 @@ def ai_forecast():
                         "1200 mm dia , 2.5 Mtr length , Np4 Class RCC Pipe"
                     }
 
-                     # 1.5 Inject offline CSV to bypass Firebase quotas
-                    csv_path = "/Users/yugendharanmohan/PROJECTS/project 2/vellore-spun-pipes-project/backend/synthetic_pipe_sales_march_2026.csv"
+                    # 1.5 Inject offline CSV to bypass Firebase quotas
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                    csv_path = os.path.join(base_dir, "synthetic_pipe_sales_march_2026.csv")
                     try:
                         NAME_MAPPING = {
                             "150mm dia 2Mtr NP2 RCC Pipe": "150 mm dia , 2 Mtr length , Np2 Class RCC Pipe",
