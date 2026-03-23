@@ -30,6 +30,10 @@ CORS(app)
 def home():
     return "<h1> Backend is Running Successfully!</h1><p>Go to <a href='/api/items'>/api/items</a> to check data.</p>"
 
+@app.route('/api/health')
+def health_check():
+    return jsonify({"status": "healthy", "message": "Server is actively processing requests."}), 200
+
 # =======================
 # HELPER: NUMBER TO WORDS
 # =======================
