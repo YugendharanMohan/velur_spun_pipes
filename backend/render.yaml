@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: velur-spun-pipes-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false

@@ -28,32 +28,13 @@ export function sortProductsByDiameter<T extends { name: string }>(items: T[]): 
   });
 }
 
-export const sendWhatsApp = async (saleId: string, partyName: string, date: string, total: number) => {
-  try {
-    const res = await fetch((import.meta.env.VITE_API_URL || '') + `/api/party_phone/${encodeURIComponent(partyName)}`);
-    const data = await res.json();
-    let phone = data.success && data.phone ? data.phone : null;
-
-    if (!phone) {
-      phone = window.prompt(`Enter WhatsApp number for ${partyName} (Include country code, e.g., 919876543210):`);
-      if (!phone) return;
-    }
-
-    phone = phone.replace(/\D/g, '');
-    if (phone.length === 10) phone = '91' + phone;
-
-    const message = `*Vellore Spun Pipes - Invoice*\n\n` +
-      `Hello ${partyName},\n` +
-      `Your invoice/estimate for the order on *${date}* has been generated.\n\n` +
-      `*Order ID:* ${saleId}\n` +
-      `*Total Amount:* ₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
-      `You can find the detailed PDF attached to this message. Thank you for your business!`;
-
-    const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(waLink, '_blank');
-
-  } catch (err) {
-    console.error(err);
-    alert("Failed to send WhatsApp message");
-  }
+export const sendWhatsApp = (saleId: string, partyName: string, date: string, total: number, phone?: string) => {
+  let p = phone || window.prompt(`Enter WhatsApp number for ${partyName} (e.g. 919876543210):`);
+  if (!p) return;
+  p = p.replace(/\D/g, '');
+  if (p.length === 10) p = '91' + p;
+  const message =
+    `*Velur Spun Pipes*\n\nHello ${partyName},\nYour invoice for *${date}* is ready.\n\n` +
+    `*Invoice No:* ${saleId.slice(0, 8).toUpperCase()}\n*Amount:* ₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\nThank you!`;
+  window.open(`https://wa.me/${p}?text=${encodeURIComponent(message)}`, '_blank');
 };

@@ -2,9 +2,6 @@ Flask
 firebase-admin
 flask-cors
 gunicorn
-sdv
-pandas
-scikit-learn
-numpy
 reportlab
 python-dotenv
+requests
