@@ -13,7 +13,19 @@ import { toast } from 'sonner';
 
 const HSN = '68109990';
 const UNITS = ['Nos', 'Mtr', 'Kg', 'Ton', 'Set', 'NONE'];
-const TAX_RATES = [0, 5, 12, 18, 28];
+
+// Tax options: label shown in UI, pct = numeric rate, type = GST (CGST+SGST) or IGST
+const TAX_OPTIONS = [
+  { label: 'GST@0%',   pct: 0,  type: 'GST'  },
+  { label: 'GST@5%',   pct: 5,  type: 'GST'  },
+  { label: 'GST@12%',  pct: 12, type: 'GST'  },
+  { label: 'GST@18%',  pct: 18, type: 'GST'  },
+  { label: 'GST@28%',  pct: 28, type: 'GST'  },
+  { label: 'IGST@5%',  pct: 5,  type: 'IGST' },
+  { label: 'IGST@12%', pct: 12, type: 'IGST' },
+  { label: 'IGST@18%', pct: 18, type: 'IGST' },
+  { label: 'IGST@28%', pct: 28, type: 'IGST' },
+];
 
 // ── Searchable customer combobox ──────────────────────────────────────────────
 function CustomerCombobox({
@@ -120,6 +132,7 @@ interface BillRow {
   discountPct: number;
   discountAmt: number;
   taxPct: number;
+  taxType: 'GST' | 'IGST'; // GST = CGST+SGST (intra-state), IGST = inter-state
   taxAmt: number;
   amount: number;         // final line amount (after discount + tax)
 }
@@ -133,7 +146,7 @@ function calcRow(r: BillRow): BillRow {
 }
 
 const emptyRow = (): BillRow =>
-  calcRow({ itemId: '', name: '', hsn: HSN, description: '', qty: 1, unit: 'Nos', price: 0, discountPct: 0, discountAmt: 0, taxPct: 18, taxAmt: 0, amount: 0 });
+  calcRow({ itemId: '', name: '', hsn: HSN, description: '', qty: 1, unit: 'Nos', price: 0, discountPct: 0, discountAmt: 0, taxPct: 18, taxType: 'GST', taxAmt: 0, amount: 0 });
 
 export default function Sales() {
   const { items, customers, addSale } = useERPStore();
@@ -211,8 +224,10 @@ export default function Sales() {
   const totalAmount = useMemo(() => rows.reduce((s, r) => s + r.amount, 0), [rows]);
 
   const subtotal = useMemo(() => rows.reduce((s, r) => s + r.qty * r.price, 0), [rows]);
-  const cgst = totalTax / 2;
-  const sgst = totalTax / 2;
+  const hasIGST = rows.some((r) => r.taxType === 'IGST');
+  const cgst = hasIGST ? 0 : totalTax / 2;
+  const sgst = hasIGST ? 0 : totalTax / 2;
+  const igst = hasIGST ? totalTax : 0;
   const grandTotal = totalAmount;
   const balanceDue = grandTotal - advance;
 
@@ -246,7 +261,7 @@ export default function Sales() {
           name: r.name, hsn: r.hsn, description: r.description,
           qty: r.qty, unit: r.unit, price: r.price,
           discount_pct: r.discountPct, discount_amt: r.discountAmt,
-          tax_pct: r.taxPct, tax_amt: r.taxAmt, amount: r.amount,
+          tax_pct: r.taxPct, tax_type: r.taxType, tax_amt: r.taxAmt, amount: r.amount,
         })),
         notes,
         advance_payment: advance,
@@ -363,7 +378,7 @@ export default function Sales() {
                       <th className="px-0 py-0 text-center font-semibold text-muted-foreground" colSpan={2}>
                         <div className="border-b px-2 py-1">TAX</div>
                         <div className="flex">
-                          <span className="flex-1 px-2 py-1 border-r text-[10px] font-normal">%</span>
+                          <span className="flex-1 px-2 py-1 border-r text-[10px] font-normal">TYPE</span>
                           <span className="flex-1 px-2 py-1 text-[10px] font-normal">AMOUNT</span>
                         </div>
                       </th>
@@ -476,18 +491,21 @@ export default function Sales() {
                           />
                         </td>
 
-                        {/* Tax % select */}
+                        {/* Tax select */}
                         <td className="px-1 py-1 border-l">
                           <Select
-                            value={String(row.taxPct)}
-                            onValueChange={(v) => updateRow(idx, { taxPct: parseInt(v) })}
+                            value={`${row.taxType}@${row.taxPct}%`}
+                            onValueChange={(v) => {
+                              const opt = TAX_OPTIONS.find((o) => o.label === v);
+                              if (opt) updateRow(idx, { taxPct: opt.pct, taxType: opt.type });
+                            }}
                           >
-                            <SelectTrigger className="h-7 text-xs w-[60px] border-0 focus:ring-1">
+                            <SelectTrigger className="h-7 text-xs w-[85px] border-0 focus:ring-1">
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              {TAX_RATES.map((r) => (
-                                <SelectItem key={r} value={String(r)}>{r}%</SelectItem>
+                              {TAX_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.label} value={opt.label}>{opt.label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -576,14 +594,23 @@ export default function Sales() {
                     <span>Discount</span>
                     <span>- {formatMoney(totalDiscount)}</span>
                   </div>
-                  <div className="flex justify-between text-[hsl(214,32%,75%)]">
-                    <span>CGST</span>
-                    <span>{formatMoney(cgst)}</span>
-                  </div>
-                  <div className="flex justify-between text-[hsl(214,32%,75%)]">
-                    <span>SGST</span>
-                    <span>{formatMoney(sgst)}</span>
-                  </div>
+                  {hasIGST ? (
+                    <div className="flex justify-between text-[hsl(214,32%,75%)]">
+                      <span>IGST</span>
+                      <span>{formatMoney(igst)}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-[hsl(214,32%,75%)]">
+                        <span>CGST</span>
+                        <span>{formatMoney(cgst)}</span>
+                      </div>
+                      <div className="flex justify-between text-[hsl(214,32%,75%)]">
+                        <span>SGST</span>
+                        <span>{formatMoney(sgst)}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="border-t border-[hsl(215,25%,27%)] pt-2.5">
                     <div className="flex justify-between text-xl font-bold">
                       <span>Grand Total</span>

@@ -339,6 +339,7 @@ def save_sale():
             discount_amt = round(base * discount_pct / 100, 2)
             taxable = base - discount_amt
             tax_pct = float(item.get('tax_pct', 18))
+            tax_type = item.get('tax_type', 'GST')  # 'GST' = CGST+SGST, 'IGST' = inter-state
             tax_amt = round(taxable * tax_pct / 100, 2)
             line_total = round(taxable + tax_amt, 2)
             subtotal += taxable  # subtotal = sum of taxable amounts
@@ -352,13 +353,16 @@ def save_sale():
                 'discount_pct': discount_pct,
                 'discount_amt': discount_amt,
                 'tax_pct': tax_pct,
+                'tax_type': tax_type,
                 'tax_amt': tax_amt,
                 'amount': line_total
             })
 
         total_tax = sum(i['tax_amt'] for i in validated_items)
-        cgst = round(total_tax / 2, 2)
-        sgst = round(total_tax / 2, 2)
+        is_igst = any(i.get('tax_type') == 'IGST' for i in validated_items)
+        cgst = 0.0 if is_igst else round(total_tax / 2, 2)
+        sgst = 0.0 if is_igst else round(total_tax / 2, 2)
+        igst = round(total_tax, 2) if is_igst else 0.0
         grand_total = round(sum(i['amount'] for i in validated_items), 2)
         advance = float(data.get('advance_payment', 0))
         balance_due = round(grand_total - advance, 2)
@@ -374,6 +378,8 @@ def save_sale():
             'subtotal': subtotal,
             'cgst': cgst,
             'sgst': sgst,
+            'igst': igst,
+            'is_igst': is_igst,
             'grand_total': grand_total,
             'advance_payment': advance,
             'balance_due': balance_due,
@@ -483,6 +489,13 @@ _SIG_BASE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'static'
 SIGNATURE_IMAGE_PATH = next(
     (p for ext in ('.jpeg', '.jpg', '.png') if _os.path.exists(p := _SIG_BASE + ext)),
     _SIG_BASE + '.jpeg'   # fallback (will show missing-file error clearly)
+)
+
+# ── logo image path ───────────────────────────────────────────────────────────
+_LOGO_BASE = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'static', 'images', 'logo')
+LOGO_IMAGE_PATH = next(
+    (p for ext in ('.jpeg', '.jpg', '.png') if _os.path.exists(p := _LOGO_BASE + ext)),
+    _LOGO_BASE + '.jpeg'
 )
 
 # ── number-to-words ──────────────────────────────────────────────────────────
@@ -645,14 +658,25 @@ def invoice_pdf(sale_id):
         hdr_bot = cur - HDR_H
         hl(hdr_bot, lw=0.8)
 
-        # logo / name box
-        bx(LM + 2, hdr_bot + 3, 60, HDR_H - 6, lw=0.6)
-        put('VELUR', LM + 32, hdr_bot + 44, sz=7, bold=True, align='C')
-        put('SPUN',  LM + 32, hdr_bot + 34, sz=7, bold=True, align='C')
-        put('PIPES', LM + 32, hdr_bot + 24, sz=7, bold=True, align='C')
+        # logo image (or fallback text box)
+        LOGO_W = 64
+        LOGO_H = HDR_H - 6
+        logo_x = LM + 2
+        logo_y = hdr_bot + 3
+        if _os.path.exists(LOGO_IMAGE_PATH):
+            logo_reader = ImageReader(LOGO_IMAGE_PATH)
+            ext = _os.path.splitext(LOGO_IMAGE_PATH)[1].lower()
+            mask = 'auto' if ext == '.png' else None
+            c.drawImage(logo_reader, logo_x, logo_y, width=LOGO_W, height=LOGO_H,
+                        mask=mask, preserveAspectRatio=True)
+        else:
+            bx(logo_x, logo_y, LOGO_W, LOGO_H, lw=0.6)
+            put('VELUR', logo_x + LOGO_W / 2, logo_y + 44, sz=7, bold=True, align='C')
+            put('SPUN',  logo_x + LOGO_W / 2, logo_y + 34, sz=7, bold=True, align='C')
+            put('PIPES', logo_x + LOGO_W / 2, logo_y + 24, sz=7, bold=True, align='C')
 
         # company text
-        CX = LM + 68
+        CX = LM + 70
         put('VELUR SPUN PIPES', CX, cur - 16, sz=15, bold=True)
         put('220/100-C Paundamangalam Road, Santhi Nagar, Paramathi Velur,',
             CX, cur - 29, sz=7.5)
@@ -734,12 +758,14 @@ def invoice_pdf(sale_id):
 
         # ── 5. ITEMS TABLE ────────────────────────────────────────────────
         ttax = 0.0; tgst = 0.0; tqty = 0
+        is_igst_sale = sale.get('is_igst', False)
         item_rows = []
         for i, item in enumerate(s_items, 1):
             qty     = int(item.get('qty', 0))
             price   = float(item.get('price', 0))
             dp      = float(item.get('discount_pct', 0))
             tp      = float(item.get('tax_pct', 18))
+            tax_type = item.get('tax_type', 'GST')
             base    = qty * price
             da      = round(base * dp / 100, 2)
             taxable = base - da
@@ -749,6 +775,7 @@ def invoice_pdf(sale_id):
             desc    = item.get('description', '')
             name    = item.get('name', '')
             name_cell = f"{name}<br/><font size='6.5'><i>({desc})</i></font>" if desc else name
+            tax_label = f"Rs. {ga:,.2f}<br/>({'IGST' if tax_type == 'IGST' else 'GST'} {int(tp)}%)"
             item_rows.append([
                 _pc(str(i)),
                 _pl(name_cell),
@@ -756,7 +783,7 @@ def invoice_pdf(sale_id):
                 _pc(str(qty)),
                 _pc(item.get('unit', 'Nos')),
                 _pr(f"Rs. {price:,.2f}"),
-                _pc(f"Rs. {ga:,.2f}<br/>({int(tp)}%)"),
+                _pc(tax_label),
                 _pr(f"Rs. {rt:,.2f}"),
             ])
 
@@ -792,39 +819,72 @@ def invoice_pdf(sale_id):
 
         # ── 6. TAX SUMMARY (left) + TOTALS (right) ────────────────────────
         TAX_TOP = cur
-        tc  = [48, 60, 28, 46, 28, 46, 54]   # sum = 310
-        TTW = sum(tc)
-        RPX = LM + TTW
-        RPW = TW - TTW                         # 235
 
-        # tax table
-        tax_data = [
-            [_pc('HSN/ SAC', 7, True),
-             _pc('Taxable\namount (Rs.)', 7, True),
-             _pc('CGST', 7, True), _pc('', 7),
-             _pc('SGST', 7, True), _pc('', 7),
-             _pc('Total Tax\n(Rs.)', 7, True)],
-            [_pc('', 7), _pc('', 7),
-             _pc('Rate\n(%)', 7, True), _pc('Amt\n(Rs.)', 7, True),
-             _pc('Rate\n(%)', 7, True), _pc('Amt\n(Rs.)', 7, True),
-             _pc('', 7)],
-            [_pc('68109990', 7), _pc(f"{ttax:,.2f}", 7),
-             _pc('9', 7), _pc(f"{tgst / 2:,.2f}", 7),
-             _pc('9', 7), _pc(f"{tgst / 2:,.2f}", 7),
-             _pc(f"{tgst:,.2f}", 7)],
-            [_pc('TOTAL', 7, True), _pc(f"{ttax:,.2f}", 7, True),
-             _pc('', 7), _pc(f"{tgst / 2:,.2f}", 7, True),
-             _pc('', 7), _pc(f"{tgst / 2:,.2f}", 7, True),
-             _pc(f"{tgst:,.2f}", 7, True)],
-        ]
-        tax_tbl = Table(tax_data, colWidths=tc, rowHeights=[18, 14, 14, 14])
-        tax_tbl.setStyle(TableStyle(_BASE + [
-            ('SPAN',       (2, 0), (3, 0)),
-            ('SPAN',       (4, 0), (5, 0)),
-            ('BACKGROUND', (0, 0), (-1, 1), colors.HexColor('#f5f5f5')),
-            ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#f5f5f5')),
-            ('ALIGN',      (0, 0), (-1, -1), 'CENTER'),
-        ]))
+        if is_igst_sale:
+            # ── IGST layout: HSN | Taxable | IGST Rate | IGST Amt | Total Tax ──
+            tc  = [55, 80, 40, 65, 70]   # sum = 310
+            TTW = sum(tc)
+            RPX = LM + TTW
+            RPW = TW - TTW
+
+            tax_data = [
+                [_pc('HSN/ SAC', 7, True),
+                 _pc('Taxable\namount (Rs.)', 7, True),
+                 _pc('IGST', 7, True), _pc('', 7),
+                 _pc('Total Tax\n(Rs.)', 7, True)],
+                [_pc('', 7), _pc('', 7),
+                 _pc('Rate\n(%)', 7, True), _pc('Amt\n(Rs.)', 7, True),
+                 _pc('', 7)],
+                [_pc('68109990', 7), _pc(f"{ttax:,.2f}", 7),
+                 _pc(f"{int(s_items[0].get('tax_pct', 18)) if s_items else 18}", 7),
+                 _pc(f"{tgst:,.2f}", 7),
+                 _pc(f"{tgst:,.2f}", 7)],
+                [_pc('TOTAL', 7, True), _pc(f"{ttax:,.2f}", 7, True),
+                 _pc('', 7),
+                 _pc(f"{tgst:,.2f}", 7, True),
+                 _pc(f"{tgst:,.2f}", 7, True)],
+            ]
+            tax_tbl = Table(tax_data, colWidths=tc, rowHeights=[18, 14, 14, 14])
+            tax_tbl.setStyle(TableStyle(_BASE + [
+                ('SPAN',       (2, 0), (3, 0)),
+                ('BACKGROUND', (0, 0), (-1, 1), colors.HexColor('#f5f5f5')),
+                ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#f5f5f5')),
+                ('ALIGN',      (0, 0), (-1, -1), 'CENTER'),
+            ]))
+        else:
+            # ── GST layout: HSN | Taxable | CGST | SGST | Total Tax ──
+            tc  = [48, 60, 28, 46, 28, 46, 54]   # sum = 310
+            TTW = sum(tc)
+            RPX = LM + TTW
+            RPW = TW - TTW
+
+            tax_data = [
+                [_pc('HSN/ SAC', 7, True),
+                 _pc('Taxable\namount (Rs.)', 7, True),
+                 _pc('CGST', 7, True), _pc('', 7),
+                 _pc('SGST', 7, True), _pc('', 7),
+                 _pc('Total Tax\n(Rs.)', 7, True)],
+                [_pc('', 7), _pc('', 7),
+                 _pc('Rate\n(%)', 7, True), _pc('Amt\n(Rs.)', 7, True),
+                 _pc('Rate\n(%)', 7, True), _pc('Amt\n(Rs.)', 7, True),
+                 _pc('', 7)],
+                [_pc('68109990', 7), _pc(f"{ttax:,.2f}", 7),
+                 _pc('9', 7), _pc(f"{tgst / 2:,.2f}", 7),
+                 _pc('9', 7), _pc(f"{tgst / 2:,.2f}", 7),
+                 _pc(f"{tgst:,.2f}", 7)],
+                [_pc('TOTAL', 7, True), _pc(f"{ttax:,.2f}", 7, True),
+                 _pc('', 7), _pc(f"{tgst / 2:,.2f}", 7, True),
+                 _pc('', 7), _pc(f"{tgst / 2:,.2f}", 7, True),
+                 _pc(f"{tgst:,.2f}", 7, True)],
+            ]
+            tax_tbl = Table(tax_data, colWidths=tc, rowHeights=[18, 14, 14, 14])
+            tax_tbl.setStyle(TableStyle(_BASE + [
+                ('SPAN',       (2, 0), (3, 0)),
+                ('SPAN',       (4, 0), (5, 0)),
+                ('BACKGROUND', (0, 0), (-1, 1), colors.HexColor('#f5f5f5')),
+                ('BACKGROUND', (0, 3), (-1, 3), colors.HexColor('#f5f5f5')),
+                ('ALIGN',      (0, 0), (-1, -1), 'CENTER'),
+            ]))
         put('Tax Summary:', LM + 4, TAX_TOP - 9, sz=8, bold=True)
         ttbl_h = draw_tbl(tax_tbl, LM, TAX_TOP, TTW)
 
